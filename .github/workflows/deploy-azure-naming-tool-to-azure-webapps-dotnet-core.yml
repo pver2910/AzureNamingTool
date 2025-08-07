@@ -27,10 +27,6 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
-  
-defaults:
-  run:
-    working-directory: src
     
 permissions:
   contents: read
@@ -54,36 +50,37 @@ jobs:
             
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src    
     needs: [check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v2
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-      
-      - name: Set up dependency caching for faster builds
-        uses: actions/cache@v3
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-      - name: Build with dotnet
-        run: dotnet build AzureNamingTool.csproj --configuration Release
+    - uses: actions/checkout@v3
 
-      - name: dotnet publish
-        run: dotnet publish AzureNamingTool.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+    - name: Set up .NET Core
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4.4.3
-        with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+    - name: Set up dependency caching for faster builds
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Build with dotnet
+      run: dotnet build AzureNamingTool.csproj --configuration Release
+      working-directory: src  # ✅ this line ensures you're in the right folder
+
+    - name: dotnet publish
+      run: dotnet publish AzureNamingTool.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      working-directory: src  # ✅ same here
+
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v4.4.3
+      with:
+        name: .net-app
+        path: ${{env.DOTNET_ROOT}}/myapp
 
   deploy: 
     defaults:
